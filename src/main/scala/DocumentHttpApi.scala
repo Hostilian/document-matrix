@@ -114,10 +114,6 @@ object DocumentHttpApi extends ZIOAppDefault {
   }
 
   override def run = 
-    for {
-      _ <- Console.printLine("🚀 Document Matrix API starting on http://localhost:8080")
-      _ <- Console.printLine("📖 API documentation: http://localhost:8080/api/docs")
-      _ <- Console.printLine("🔍 Health check: http://localhost:8080/health")
-      _ <- Server.serve(app).provide(Server.default.port(8080))
-    } yield ()
+    Server.serve(app).provide(Server.defaultWithPort(8080)) *>
+    Console.printLine("� Document Matrix API started on http://localhost:8080")
 }

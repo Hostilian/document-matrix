@@ -13,8 +13,12 @@ object DocumentCata {
   def cata[A, B](alg: Document[B] => B)(doc: Document[A])(leaf: A => B): B =
     doc match {
       case Document.Cell(a)    => leaf(a)
-      case Document.Horiz(cs)  => alg(Document.Horiz(cs.map(c => cata(alg)(c)(leaf))))
-      case Document.Vert(cs)   => alg(Document.Vert(cs.map(c => cata(alg)(c)(leaf))))
+      case Document.Horiz(cs)  => 
+        val results = cs.map(c => cata(alg)(c)(leaf))
+        alg(Document.Horiz(results))
+      case Document.Vert(cs)   => 
+        val results = cs.map(c => cata(alg)(c)(leaf))
+        alg(Document.Vert(results))
     }
 
   // Common algebras

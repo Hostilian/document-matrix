@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: "🚀 CI/CD Pipeline"
 
 on:
   push:
@@ -6,28 +6,35 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  JAVA_VERSION: '17'
+  SCALA_VERSION: '3.4.2'
+
 jobs:
   test:
+    name: "🧪 Test & Build"
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
+    - name: "📥 Checkout Repository"
       uses: actions/checkout@v4
       
-    - name: Setup Java
+    - name: "☕ Setup Java ${{ env.JAVA_VERSION }}"
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
-        java-version: '17'
+        java-version: ${{ env.JAVA_VERSION }}
         
-    - name: Cache SBT
+    - name: "📦 Cache Dependencies"
       uses: actions/cache@v3
       with:
         path: |
           ~/.sbt
           ~/.ivy2/cache
           ~/.coursier/cache
-        key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
+        key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt', 'project/**.scala', 'project/**.sbt') }}
+        restore-keys: |
+          ${{ runner.os }}-sbt-
         
     - name: Run tests
       run: sbt clean test

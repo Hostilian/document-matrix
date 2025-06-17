@@ -171,7 +171,7 @@ object DocumentCLI extends ZIOAppDefault {
     } yield ()
   }
 
-  def batchMode(args: List[String]): ZIO[Any, IOException, Unit] = {
+  def batchMode(args: List[String]): ZIO[Any, Nothing, Unit] = {
     val command = args.headOption.map(Command.parse).getOrElse(Command.ShowSample)
     handleCommand(command).unit
   }

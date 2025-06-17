@@ -25,8 +25,8 @@ object DocumentCata {
      */
     def countCells: Document[Int] => Int = {
       case Document.Cell(value)  => value
-      case Document.Horiz(cs)    => cs.sum
-      case Document.Vert(cs)     => cs.sum
+      case Document.Horiz(cs)    => cs.foldLeft(0)(_ + _)
+      case Document.Vert(cs)     => cs.foldLeft(0)(_ + _)
     }
 
     /**
@@ -34,8 +34,8 @@ object DocumentCata {
      */
     def maxDepth: Document[Int] => Int = {
       case Document.Cell(value)  => value
-      case Document.Horiz(cs)    => if (cs.isEmpty) 0 else cs.max + 1
-      case Document.Vert(cs)     => if (cs.isEmpty) 0 else cs.max + 1
+      case Document.Horiz(cs)    => if (cs.isEmpty) 0 else cs.foldLeft(0)(math.max) + 1
+      case Document.Vert(cs)     => if (cs.isEmpty) 0 else cs.foldLeft(0)(math.max) + 1
     }
 
     /**
@@ -43,8 +43,8 @@ object DocumentCata {
      */
     def flatten[A]: Document[List[A]] => List[A] = {
       case Document.Cell(as)     => as
-      case Document.Horiz(cs)    => cs.flatMap(identity)
-      case Document.Vert(cs)     => cs.flatMap(identity)
+      case Document.Horiz(cs)    => cs.foldLeft(List.empty[A])(_ ++ _)
+      case Document.Vert(cs)     => cs.foldLeft(List.empty[A])(_ ++ _)
     }
 
     /**

@@ -40,56 +40,48 @@ object DocumentHttpApi extends ZIOAppDefault {
     ))
   ))
 
-  // HTTP Routes using correct ZIO HTTP 3.x syntax
-  val documentRoutes: Routes[Any, Response] = Routes(
+  // HTTP Routes using correct ZIO HTTP syntax
+  val app = Http.collectZIO[Request] {
     // Basic document endpoint
-    Method.GET / "document" -> handler {
-      Response.text(DocumentPrinter.printTree(sampleDoc))
-    },
+    case Method.GET -> Root / "document" =>
+      ZIO.succeed(Response.text(DocumentPrinter.printTree(sampleDoc)))
 
     // JSON representation
-    Method.GET / "document" / "json" -> handler {
-      Response.text(DocumentPrinter.printJson(sampleDoc))
-    },
+    case Method.GET -> Root / "document" / "json" =>
+      ZIO.succeed(Response.text(DocumentPrinter.printJson(sampleDoc)))
 
     // HTML representation
-    Method.GET / "document" / "html" -> handler {
-      Response.text(DocumentPrinter.printHtml(sampleDoc))
-    },
+    case Method.GET -> Root / "document" / "html" =>
+      ZIO.succeed(Response.text(DocumentPrinter.printHtml(sampleDoc)))
 
     // Complex document example
-    Method.GET / "document" / "complex" -> handler {
-      Response.text(DocumentPrinter.printTree(complexDoc))
-    },
+    case Method.GET -> Root / "document" / "complex" =>
+      ZIO.succeed(Response.text(DocumentPrinter.printTree(complexDoc)))
 
     // Document statistics
-    Method.GET / "document" / "stats" -> handler {
-      Response.text(DocumentPrinter.printStats(sampleDoc))
-    },
+    case Method.GET -> Root / "document" / "stats" =>
+      ZIO.succeed(Response.text(DocumentPrinter.printStats(sampleDoc)))
 
     // Transform document to uppercase (demo of traverseM)
-    Method.GET / "document" / "transform" / "uppercase" -> handler {
+    case Method.GET -> Root / "document" / "transform" / "uppercase" =>
       val uppercaseDoc = Document.traverseM[Document.Id, String, String](_.toUpperCase)(sampleDoc)
-      Response.text(DocumentPrinter.printTree(uppercaseDoc))
-    },
+      ZIO.succeed(Response.text(DocumentPrinter.printTree(uppercaseDoc)))
 
     // Validate document structure
-    Method.GET / "document" / "validate" -> handler {
+    case Method.GET -> Root / "document" / "validate" =>
       Document.validate(sampleDoc) match {
         case Right(_) => 
-          Response.text("✅ Document is valid")
+          ZIO.succeed(Response.text("✅ Document is valid"))
         case Left(error) => 
-          Response.text(s"❌ Validation failed: $error").withStatus(Status.BadRequest)
+          ZIO.succeed(Response.text(s"❌ Validation failed: $error").status(Status.BadRequest))
       }
-    },
 
     // Health check endpoint
-    Method.GET / "health" -> handler {
-      Response.text("✅ Document Matrix API is healthy!")
-    },
+    case Method.GET -> Root / "health" =>
+      ZIO.succeed(Response.text("✅ Document Matrix API is healthy!"))
 
     // API documentation
-    Method.GET / "api" / "docs" -> handler {
+    case Method.GET -> Root / "api" / "docs" =>
       val docs = """
         |# Document Matrix API
         |
@@ -110,34 +102,24 @@ object DocumentHttpApi extends ZIOAppDefault {
         |- ZIO effects for async operations
         |- Professional error handling
         |""".stripMargin
-      Response.text(docs)
-    }
-  )
+      ZIO.succeed(Response.text(docs))
 
-  // CORS middleware for web compatibility
-  val corsConfig: CorsConfig = CorsConfig(
-    allowedOrigins = _ => true,
-    allowedMethods = Some(Set(Method.GET, Method.POST, Method.PUT, Method.DELETE, Method.OPTIONS))
-  )
-
-  // Logging middleware
-  val loggingMiddleware = HandlerAspect.debug
-
-  // Complete app with middleware
-  val app: Routes[Any, Response] = documentRoutes @@ Middleware.cors(corsConfig) @@ loggingMiddleware
+    // Root endpoint with welcome message
+    case Method.GET -> Root =>
+      ZIO.succeed(Response.text("🌟 Welcome to Document Matrix API! Visit /api/docs for documentation."))
+  }
 
   // Server configuration
-  val serverConfig = Server.Config.default
-    .port(8080)
-    .enableRequestLogging
+  val serverConfig = Server.Config.default.port(8080)
 
   override def run = 
-    (for {
+    for {
       _ <- Console.printLine("🚀 Document Matrix API starting on http://localhost:8080")
       _ <- Console.printLine("📖 API documentation: http://localhost:8080/api/docs")
       _ <- Console.printLine("🔍 Health check: http://localhost:8080/health")
       _ <- Server.serve(app).provide(Server.defaultWith(serverConfig))
-    } yield ())
+    } yield ()
+}
 }
       ZIO.succeed(Response.text(DocumentPrinter.printJson(sampleDoc)))
 

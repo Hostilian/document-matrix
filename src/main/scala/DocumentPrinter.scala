@@ -122,17 +122,6 @@ object DocumentPrinter {
     s"${tree}\n\n${Style.separator("═" * 50)}\n${stats}"
   }
 
-  // Styling utilities
-  object Style {
-    def cell(str: String): String = fansi.Color.Green(fansi.Bold.On(str)).toString
-    def container(str: String): String = fansi.Color.Blue(fansi.Bold.On(str)).toString
-    def stats(str: String): String = fansi.Color.Yellow(str).toString
-    def separator(str: String): String = fansi.Color.Magenta(str).toString
-    def error(str: String): String = fansi.Color.Red(fansi.Bold.On(str)).toString
-    def success(str: String): String = fansi.Color.Green(fansi.Bold.On(str)).toString
-    def info(str: String): String = fansi.Color.Cyan(str).toString
-  }
-
   // Output format enum
   sealed trait OutputFormat
   object OutputFormat {

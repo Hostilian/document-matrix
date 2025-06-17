@@ -1,6 +1,7 @@
 package com.example
 
 import cats.{Monad, Traverse}
+import cats.instances.all._
 import cats.syntax.all._
 import zio.json._
 
@@ -18,7 +19,7 @@ object Document {
 
   // Identity type for lawful traversal
   type Id[A] = A
-  implicit val idMonad: Monad[Id] = cats.Id.catsInstancesForId
+  implicit val idMonad: Monad[Id] = cats.catsInstancesForId
 
   /**
    * Monadic traversal function that satisfies:

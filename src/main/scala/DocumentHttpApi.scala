@@ -2,17 +2,14 @@ package com.example
 
 import zio._
 import zio.http._
-import zio.json._
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 /**
- * Production-ready HTTP API for Document Matrix with comprehensive endpoints.
- * Features RESTful design, proper error handling, and multiple content types.
+ * Production-ready HTTP API for Document Matrix.
+ * Demonstrates ZIO HTTP with proper error handling and multiple endpoints.
  */
 object DocumentHttpApi extends ZIOAppDefault {
 
-  // Sample documents
+  // Sample documents for demonstration
   val sampleDoc: Document[String] = Document.Vert(List(
     Document.Cell("🌟 API Response Header"),
     Document.Horiz(List(
@@ -26,7 +23,7 @@ object DocumentHttpApi extends ZIOAppDefault {
   ))
 
   val complexDoc: Document[String] = Document.Vert(List(
-    Document.Cell("🚀 Complex API Document"),
+    Document.Cell("🚀 Complex Document"),
     Document.Horiz(List(
       Document.Vert(List(
         Document.Cell("📈 Analytics"),
@@ -43,8 +40,199 @@ object DocumentHttpApi extends ZIOAppDefault {
     ))
   ))
 
-  // API Routes
-  val documentRoutes = Routes(
+  // HTTP Routes using correct ZIO HTTP 3.x syntax
+  val documentRoutes: Routes[Any, Response] = Routes(
+    // Basic document endpoint
+    Method.GET / "document" -> handler {
+      Response.text(DocumentPrinter.printTree(sampleDoc))
+    },
+
+    // JSON representation
+    Method.GET / "document" / "json" -> handler {
+      Response.text(DocumentPrinter.printJson(sampleDoc))
+    },
+
+    // HTML representation
+    Method.GET / "document" / "html" -> handler {
+      Response.text(DocumentPrinter.printHtml(sampleDoc))
+    },
+
+    // Complex document example
+    Method.GET / "document" / "complex" -> handler {
+      Response.text(DocumentPrinter.printTree(complexDoc))
+    },
+
+    // Document statistics
+    Method.GET / "document" / "stats" -> handler {
+      Response.text(DocumentPrinter.printStats(sampleDoc))
+    },
+
+    // Transform document to uppercase (demo of traverseM)
+    Method.GET / "document" / "transform" / "uppercase" -> handler {
+      val uppercaseDoc = Document.traverseM[Document.Id, String, String](_.toUpperCase)(sampleDoc)
+      Response.text(DocumentPrinter.printTree(uppercaseDoc))
+    },
+
+    // Validate document structure
+    Method.GET / "document" / "validate" -> handler {
+      Document.validate(sampleDoc) match {
+        case Right(_) => 
+          Response.text("✅ Document is valid")
+        case Left(error) => 
+          Response.text(s"❌ Validation failed: $error").withStatus(Status.BadRequest)
+      }
+    },
+
+    // Health check endpoint
+    Method.GET / "health" -> handler {
+      Response.text("✅ Document Matrix API is healthy!")
+    },
+
+    // API documentation
+    Method.GET / "api" / "docs" -> handler {
+      val docs = """
+        |# Document Matrix API
+        |
+        |## Endpoints:
+        |- GET /document          - Basic document tree
+        |- GET /document/json     - JSON format
+        |- GET /document/html     - HTML format  
+        |- GET /document/complex  - Complex example
+        |- GET /document/stats    - Document statistics
+        |- GET /document/transform/uppercase - Transform to uppercase
+        |- GET /document/validate - Validate structure
+        |- GET /health           - Health check
+        |- GET /api/docs         - This documentation
+        |
+        |## Features:
+        |- Algebraic Data Types for type safety
+        |- Monadic traversals with cats
+        |- ZIO effects for async operations
+        |- Professional error handling
+        |""".stripMargin
+      Response.text(docs)
+    }
+  )
+
+  // CORS middleware for web compatibility
+  val corsConfig: CorsConfig = CorsConfig(
+    allowedOrigins = _ => true,
+    allowedMethods = Some(Set(Method.GET, Method.POST, Method.PUT, Method.DELETE, Method.OPTIONS))
+  )
+
+  // Logging middleware
+  val loggingMiddleware = HandlerAspect.debug
+
+  // Complete app with middleware
+  val app: Routes[Any, Response] = documentRoutes @@ Middleware.cors(corsConfig) @@ loggingMiddleware
+
+  // Server configuration
+  val serverConfig = Server.Config.default
+    .port(8080)
+    .enableRequestLogging
+
+  override def run = 
+    (for {
+      _ <- Console.printLine("🚀 Document Matrix API starting on http://localhost:8080")
+      _ <- Console.printLine("📖 API documentation: http://localhost:8080/api/docs")
+      _ <- Console.printLine("🔍 Health check: http://localhost:8080/health")
+      _ <- Server.serve(app).provide(Server.defaultWith(serverConfig))
+    } yield ())
+}
+      ZIO.succeed(Response.text(DocumentPrinter.printJson(sampleDoc)))
+
+    // HTML representation
+    case Method.GET -> Root / "document" / "html" =>
+      ZIO.succeed(Response.text(DocumentPrinter.printHtml(sampleDoc)))
+
+    // Complex document example
+    case Method.GET -> Root / "document" / "complex" =>
+      ZIO.succeed(Response.text(DocumentPrinter.printTree(complexDoc)))
+
+    // Document statistics
+    case Method.GET -> Root / "document" / "stats" =>
+      ZIO.succeed(Response.text(DocumentPrinter.printStats(sampleDoc)))
+
+    // Transform document to uppercase (demo of traverseM)
+    case Method.GET -> Root / "document" / "transform" / "uppercase" =>
+      val uppercaseDoc = Document.traverseM[Document.Id, String, String](_.toUpperCase)(sampleDoc)
+      ZIO.succeed(Response.text(DocumentPrinter.printTree(uppercaseDoc)))
+
+    // Validate document structure
+    case Method.GET -> Root / "document" / "validate" =>
+      Document.validate(sampleDoc) match {
+        case Right(_) => 
+          ZIO.succeed(Response.text("✅ Document is valid"))
+        case Left(error) => 
+          ZIO.succeed(Response.text(s"❌ Validation failed: $error").copy(status = Status.BadRequest))
+      }
+
+    // API documentation
+    case Method.GET -> Root / "api" / "docs" =>
+      val docs = """
+        |# Document Matrix API
+        |
+        |## Endpoints:
+        |- GET /document          - Basic document tree
+        |- GET /document/json     - JSON format
+        |- GET /document/html     - HTML format  
+        |- GET /document/complex  - Complex example
+        |- GET /document/stats    - Document statistics
+        |- GET /document/transform/uppercase - Transform to uppercase
+        |- GET /document/validate - Validate structure
+        |- GET /health           - Health check
+        |- GET /api/docs         - This documentation
+        |
+        |## Features:
+        |- Algebraic Data Types for type safety
+        |- Monadic traversals with cats
+        |- ZIO effects for async operations
+        |- Professional error handling
+        |""".stripMargin
+      ZIO.succeed(Response.text(docs))
+
+    // Health check endpoint
+    case Method.GET -> Root / "health" =>
+      ZIO.succeed(Response.text("""{"status": "healthy", "service": "document-matrix"}"""))
+
+    // Root endpoint with welcome message
+    case Method.GET -> Root =>
+      val welcome = """
+        |🌟 Document Matrix API
+        |
+        |A functional document processing system built with:
+        |• Scala 3.4.2
+        |• ZIO 2.0.21  
+        |• Cats for functional programming
+        |• Professional error handling
+        |
+        |Visit /api/docs for endpoint documentation
+        |""".stripMargin
+      ZIO.succeed(Response.text(welcome))
+  }
+
+  // Error handling for unknown routes
+  val errorHandler = Http.collectZIO[Request] {
+    case _ =>
+      ZIO.succeed(
+        Response.text("❌ Endpoint not found. Visit /api/docs for available endpoints.")
+          .copy(status = Status.NotFound)
+      )
+  }
+
+  // Combine routes with error handling
+  val app = documentRoutes.orElse(errorHandler)
+
+  // Server configuration
+  val serverConfig = Server.Config.default.port(8080)
+
+  // Application entry point
+  val run = for {
+    _ <- Console.printLine("🚀 Starting Document Matrix HTTP API on port 8080")
+    _ <- Console.printLine("📖 Visit http://localhost:8080/api/docs for documentation")
+    _ <- Server.serve(app).provide(Server.live(serverConfig))
+  } yield ()
+}
     // Get document tree (default format)
     Method.GET / "document" -> handler {
       Response.text(DocumentPrinter.printTree(sampleDoc))

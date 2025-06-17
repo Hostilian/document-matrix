@@ -1,14 +1,24 @@
 package com.example
 
 import fansi._
-import java.io.PrintWriter
-import java.io.StringWriter
+import zio.json._
 
 /**
- * Advanced ANSI pretty-printer for Document with tree-style rendering.
+ * Advanced ANSI printer for Document with tree-style rendering.
  * Supports multiple output formats and customizable styling.
  */
 object DocumentPrinter {
+
+  // ANSI styling utilities
+  object Style {
+    def cell(str: String): String = fansi.Color.Green(fansi.Bold.On(str)).toString
+    def container(str: String): String = fansi.Color.Blue(fansi.Bold.On(str)).toString
+    def stats(str: String): String = fansi.Color.Yellow(str).toString
+    def separator(str: String): String = fansi.Color.Magenta(str).toString
+    def error(str: String): String = fansi.Color.Red(fansi.Bold.On(str)).toString
+    def success(str: String): String = fansi.Color.Green(fansi.Bold.On(str)).toString
+    def info(str: String): String = fansi.Color.Cyan(str).toString
+  }
 
   /**
    * Tree-style rendering with ANSI colors and Unicode box-drawing characters.
@@ -114,13 +124,13 @@ object DocumentPrinter {
 
   // Styling utilities
   object Style {
-    def cell(str: String): String = fansi.Color.Green(fansi.Bold.On(str))
-    def container(str: String): String = fansi.Color.Blue(fansi.Bold.On(str))
-    def stats(str: String): String = fansi.Color.Yellow(str)
-    def separator(str: String): String = fansi.Color.Magenta(str)
-    def error(str: String): String = fansi.Color.Red(fansi.Bold.On(str))
-    def success(str: String): String = fansi.Color.Green(fansi.Bold.On(str))
-    def info(str: String): String = fansi.Color.Cyan(str)
+    def cell(str: String): String = fansi.Color.Green(fansi.Bold.On(str)).toString
+    def container(str: String): String = fansi.Color.Blue(fansi.Bold.On(str)).toString
+    def stats(str: String): String = fansi.Color.Yellow(str).toString
+    def separator(str: String): String = fansi.Color.Magenta(str).toString
+    def error(str: String): String = fansi.Color.Red(fansi.Bold.On(str)).toString
+    def success(str: String): String = fansi.Color.Green(fansi.Bold.On(str)).toString
+    def info(str: String): String = fansi.Color.Cyan(str).toString
   }
 
   // Output format enum

@@ -78,7 +78,7 @@ object DocumentCLI extends ZIOAppDefault {
       |${DocumentPrinter.Style.success("╚═══════════════════════════════════════╝")}
       |""".stripMargin
     
-    printLine(banner)
+    printLine(banner).orDie
   }
 
   def printHelp(): UIO[Unit] = {
@@ -96,62 +96,62 @@ object DocumentCLI extends ZIOAppDefault {
       |  ${DocumentPrinter.Style.success("exit")}      (q) - Exit application
       |""".stripMargin
     
-    printLine(help)
+    printLine(help).orDie
   }
 
   def handleCommand(command: Command): UIO[Boolean] = command match {
     case Command.ShowSample =>
-      for {
+      (for {
         _ <- printLine(DocumentPrinter.Style.info("\n🌟 Sample Document:"))
         _ <- printLine(DocumentPrinter.printTree(sampleDoc))
-      } yield true
+      } yield true).orDie
 
     case Command.ShowComplex =>
-      for {
+      (for {
         _ <- printLine(DocumentPrinter.Style.info("\n🚀 Complex Document:"))
         _ <- printLine(DocumentPrinter.printFull(complexDoc))
-      } yield true
+      } yield true).orDie
 
     case Command.ShowStats =>
-      for {
+      (for {
         _ <- printLine(DocumentPrinter.Style.info("\n📊 Document Statistics:"))
         _ <- printLine(DocumentPrinter.printStats(sampleDoc))
-      } yield true
+      } yield true).orDie
 
     case Command.ShowJson =>
-      for {
+      (for {
         _ <- printLine(DocumentPrinter.Style.info("\n📄 JSON Export:"))
         _ <- printLine(DocumentPrinter.printJson(sampleDoc))
-      } yield true
+      } yield true).orDie
 
     case Command.ShowHtml =>
-      for {
+      (for {
         _ <- printLine(DocumentPrinter.Style.info("\n🌐 HTML Export:"))
         _ <- printLine(DocumentPrinter.printHtml(sampleDoc))
-      } yield true
+      } yield true).orDie
 
     case Command.Transform =>
-      for {
+      (for {
         _ <- printLine(DocumentPrinter.Style.info("\n🔄 Document Transformation (uppercase):"))
         transformed = Document.traverseM[Document.Id, String, String](_.toUpperCase)(sampleDoc)
         _ <- printLine(DocumentPrinter.printTree(transformed))
-      } yield true
+      } yield true).orDie
 
     case Command.Validate =>
-      for {
+      (for {
         _ <- printLine(DocumentPrinter.Style.info("\n✅ Document Validation:"))
         result = Document.validate(sampleDoc)
         _ <- result match {
           case Right(_) => printLine(DocumentPrinter.Style.success("✓ Document is valid"))
           case Left(error) => printLine(DocumentPrinter.Style.error(s"✗ Validation failed: $error"))
         }
-      } yield true
+      } yield true).orDie
 
     case Command.Help =>
       printHelp().as(true)
 
     case Command.Exit =>
-      printLine(DocumentPrinter.Style.success("👋 Goodbye!")).as(false)
+      printLine(DocumentPrinter.Style.success("👋 Goodbye!")).as(false).orDie
   }
 
   def interactiveMode(): ZIO[Any, Throwable, Unit] = {
@@ -171,7 +171,7 @@ object DocumentCLI extends ZIOAppDefault {
     } yield ()
   }
 
-  def batchMode(args: List[String]): UIO[Unit] = {
+  def batchMode(args: List[String]): ZIO[Any, IOException, Unit] = {
     val command = args.headOption.map(Command.parse).getOrElse(Command.ShowSample)
     handleCommand(command).unit
   }

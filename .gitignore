@@ -1,0 +1,13 @@
+/target
+/.idea
+/.bsp
+/.metals
+/.ammonite
+*.iml
+.project
+.classpath
+.cache
+.vscode
+.DS_Store
+*.log
+/out

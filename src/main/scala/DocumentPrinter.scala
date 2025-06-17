@@ -99,9 +99,9 @@ object DocumentPrinter {
    * Statistics about document structure.
    */
   def printStats[A](doc: Document[A]): String = {
-    val cellCount = DocumentCata.cata(DocumentCata.Algebras.countCells)(doc)(_ => 1)
-    val maxDepth = DocumentCata.cata(DocumentCata.Algebras.maxDepth)(doc)(_ => 1)
-    val values = DocumentCata.cata(DocumentCata.Algebras.flatten)(doc)(List(_))
+    val cellCount = DocumentCata.countTotalCells(doc)
+    val maxDepth = DocumentCata.calculateMaxDepth(doc)
+    val values = DocumentCata.flattenToList(doc)
     
     val stats = List(
       s"📊 Total cells: ${cellCount}",

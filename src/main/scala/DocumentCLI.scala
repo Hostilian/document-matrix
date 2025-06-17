@@ -175,7 +175,7 @@ object DocumentCLI extends ZIOAppDefault {
     handleCommand(command).unit
   }
 
-  val run: ZIO[Any, Throwable, Unit] = 
+  def run = 
     for {
       args <- getArgs
       _ <- if (args.isEmpty) interactiveMode() else batchMode(args.toList)

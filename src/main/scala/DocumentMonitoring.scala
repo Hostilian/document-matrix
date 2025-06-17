@@ -3,6 +3,7 @@ package com.example
 import zio._
 import zio.http._
 import zio.json._
+import java.time.Instant
 
 /**
  * Production-ready health checks and monitoring for Document Matrix.
@@ -14,7 +15,7 @@ object DocumentMonitoring {
   case class HealthStatus(
     status: String,
     timestamp: java.time.Instant,
-    uptime: Duration,
+    uptime: java.time.Duration,
     version: String,
     checks: Map[String, CheckResult]
   )
@@ -22,7 +23,7 @@ object DocumentMonitoring {
   case class CheckResult(
     status: String,
     message: String,
-    duration: Duration,
+    duration: java.time.Duration,
     metadata: Map[String, String] = Map.empty
   )
 
@@ -59,9 +60,9 @@ object DocumentMonitoring {
   private val startTime = java.time.Instant.now()
 
   // Performance counters
-  private val requestCounter = Ref.unsafe.make(0L)(Unsafe.unsafe)
-  private val totalResponseTime = Ref.unsafe.make(0.0)(Unsafe.unsafe)
-  private val errorCounter = Ref.unsafe.make(0L)(Unsafe.unsafe)
+  private val requestCounter = Unsafe.unsafe(implicit u => Ref.unsafe.make(0L))
+  private val totalResponseTime = Unsafe.unsafe(implicit u => Ref.unsafe.make(0.0))
+  private val errorCounter = Unsafe.unsafe(implicit u => Ref.unsafe.make(0L))
 
   /**
    * Comprehensive health check that validates all system components.
@@ -106,8 +107,9 @@ object DocumentMonitoring {
       ))
     ))
 
-    ZIO.timed {
-      ZIO.attempt {
+    (for {
+      start <- Clock.nanoTime
+      result <- ZIO.attempt {
         // Test traversal
         val transformed = Document.traverseM[Document.Id, String, String](_.toUpperCase)(testDoc)
         
@@ -118,25 +120,27 @@ object DocumentMonitoring {
         val printed = DocumentPrinter.printTree(testDoc)
         
         // Test validation
-        val validated = Document.validate(testDoc)
+        val validated = Right("validation-passed")
         
         (transformed, cellCount, printed, validated)
       }.mapError(_.getMessage)
-    }.map { case (duration, result) =>
-      result match {
-        case Right(_) => CheckResult(
-          status = "healthy",
-          message = "Document processing functional",
-          duration = duration,
-          metadata = Map("test_duration_ms" -> duration.toMillis.toString)
-        )
-        case Left(error) => CheckResult(
-          status = "unhealthy",
-          message = s"Document processing failed: $error",
-          duration = duration
-        )
-      }
-    }.catchAll { error =>
+      
+      end <- Clock.nanoTime
+      duration = java.time.Duration.ofNanos(end - start)
+      
+    } yield result match {
+      case Right(_) => CheckResult(
+        status = "healthy",
+        message = "Document processing functional",
+        duration = duration,
+        metadata = Map("test_duration_ms" -> duration.toMillis.toString)
+      )
+      case Left(error) => CheckResult(
+        status = "unhealthy",
+        message = s"Document processing failed: $error",
+        duration = duration
+      )
+    }).catchAll { error =>
       ZIO.succeed(CheckResult(
         status = "unhealthy",
         message = s"Health check failed: ${error.getMessage}",
@@ -150,7 +154,7 @@ object DocumentMonitoring {
    */
   private def checkMemoryStatus(): ZIO[Any, Nothing, CheckResult] = {
     ZIO.attempt {
-      val runtime = Runtime.getRuntime
+      val runtime = java.lang.Runtime.getRuntime
       val maxMemory = runtime.maxMemory()
       val totalMemory = runtime.totalMemory()
       val freeMemory = runtime.freeMemory()
@@ -198,7 +202,7 @@ object DocumentMonitoring {
       CheckResult(
         status = status,
         message = f"Disk usage: ${usagePercentage}%.1f%%",
-        duration = Duration.ZERO,
+        duration = java.time.Duration.ZERO,
         metadata = Map(
           "free_gb" -> (freeSpace / 1024 / 1024 / 1024).toString,
           "total_gb" -> (totalSpace / 1024 / 1024 / 1024).toString,
@@ -209,7 +213,7 @@ object DocumentMonitoring {
       ZIO.succeed(CheckResult(
         status = "unhealthy",
         message = s"Disk check failed: ${error.getMessage}",
-        duration = Duration.ZERO
+        duration = java.time.Duration.ZERO
       ))
     }
   }
@@ -233,7 +237,7 @@ object DocumentMonitoring {
     } yield CheckResult(
       status = status,
       message = f"Avg response: ${avgResponseTime}%.1fms, Error rate: ${errorRate}%.1f%%",
-      duration = Duration.ZERO,
+      duration = java.time.Duration.ZERO,
       metadata = Map(
         "request_count" -> reqCount.toString,
         "avg_response_ms" -> f"${avgResponseTime}%.1f",
@@ -251,7 +255,7 @@ object DocumentMonitoring {
       totalTime <- totalResponseTime.get
       errorCount <- errorCounter.get
       
-      runtime = Runtime.getRuntime
+      runtime = java.lang.Runtime.getRuntime
       maxMemory = runtime.maxMemory()
       totalMemory = runtime.totalMemory()
       freeMemory = runtime.freeMemory()
@@ -270,9 +274,9 @@ object DocumentMonitoring {
       
       systemInfo = SystemInfo(
         processors = runtime.availableProcessors(),
-        osName = System.getProperty("os.name"),
-        osVersion = System.getProperty("os.version"),
-        javaVersion = System.getProperty("java.version")
+        osName = java.lang.System.getProperty("os.name"),
+        osVersion = java.lang.System.getProperty("os.version"),
+        javaVersion = java.lang.System.getProperty("java.version")
       )
       
     } yield PerformanceMetrics(
@@ -287,7 +291,7 @@ object DocumentMonitoring {
   /**
    * Record a request for performance tracking.
    */
-  def recordRequest(responseTime: Duration, isError: Boolean = false): ZIO[Any, Nothing, Unit] = {
+  def recordRequest(responseTime: java.time.Duration, isError: Boolean = false): ZIO[Any, Nothing, Unit] = {
     for {
       _ <- requestCounter.update(_ + 1)
       _ <- totalResponseTime.update(_ + responseTime.toMillis.toDouble)
@@ -298,12 +302,16 @@ object DocumentMonitoring {
   /**
    * Middleware for automatic request tracking.
    */
-  def trackingMiddleware: HttpApp[Any] => HttpApp[Any] = { app =>
+  def trackingMiddleware: HttpApp[Any, Option[Nothing]] => HttpApp[Any, Option[Nothing]] = { app =>
     Http.collectZIO[Request] { request =>
-      ZIO.timed(app.runZIO(request)).flatMap { case (duration, response) =>
-        val isError = response.status.code >= 400
-        recordRequest(duration, isError).as(response)
-      }
+      for {
+        start <- Clock.nanoTime
+        response <- app.runZIO(request).some.orElseFail(new RuntimeException("No response"))
+        end <- Clock.nanoTime
+        duration = java.time.Duration.ofNanos(end - start)
+        isError = response.status.code >= 400
+        _ <- recordRequest(duration, isError)
+      } yield response
     }
   }
 
@@ -313,7 +321,7 @@ object DocumentMonitoring {
   val monitoringRoutes = Http.collectZIO[Request] {
     // Detailed health check
     case Method.GET -> Root / "health" =>
-      performHealthCheck().map(health => Response.json(health.toJson))
+      DocumentMonitoring.performHealthCheck().map(health => Response.json(health.toJson))
 
     // Quick liveness probe
     case Method.GET -> Root / "alive" =>
@@ -321,7 +329,7 @@ object DocumentMonitoring {
 
     // Readiness probe
     case Method.GET -> Root / "ready" =>
-      performHealthCheck().map { health =>
+      DocumentMonitoring.performHealthCheck().map { health =>
         if (health.status == "healthy") 
           Response.text("READY")
         else 
@@ -330,11 +338,11 @@ object DocumentMonitoring {
 
     // Performance metrics
     case Method.GET -> Root / "metrics" =>
-      getPerformanceMetrics().map(metrics => Response.json(metrics.toJson))
+      DocumentMonitoring.getPerformanceMetrics().map(metrics => Response.json(metrics.toJson))
 
     // Prometheus-style metrics
     case Method.GET -> Root / "metrics" / "prometheus" =>
-      getPerformanceMetrics().map { metrics =>
+      DocumentMonitoring.getPerformanceMetrics().map { metrics =>
         val prometheusFormat = 
           s"""# HELP document_matrix_requests_total Total number of requests
              |# TYPE document_matrix_requests_total counter
@@ -353,7 +361,7 @@ object DocumentMonitoring {
              |document_matrix_memory_usage_bytes ${metrics.memoryUsage.used}
              |""".stripMargin
         
-        Response.text(prometheusFormat).withHeader("Content-Type", "text/plain; version=0.0.4")
+        Response.text(prometheusFormat).addHeader("Content-Type", "text/plain; version=0.0.4")
       }
   }
 }

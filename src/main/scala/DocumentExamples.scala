@@ -3,10 +3,21 @@ package com.example.examples
 import com.example.{Document, DocumentCata, DocumentPrinter}
 import zio._
 import zio.json._
-import cats.Id
+import cats.{Id, Monad}
 import cats.instances.option._
 import cats.instances.list._
 import cats.syntax.all._
+
+// ZIO Monad instance for use in traverseM
+given Monad[({type L[X] = ZIO[Any, Nothing, X]})#L] = new Monad[({type L[X] = ZIO[Any, Nothing, X]})#L] {
+  def pure[A](x: A): ZIO[Any, Nothing, A] = ZIO.succeed(x)
+  def flatMap[A, B](fa: ZIO[Any, Nothing, A])(f: A => ZIO[Any, Nothing, B]): ZIO[Any, Nothing, B] = fa.flatMap(f)
+  def tailRecM[A, B](a: A)(f: A => ZIO[Any, Nothing, Either[A, B]]): ZIO[Any, Nothing, B] =
+    ZIO.succeed(a).flatMap(f).flatMap {
+      case Left(nextA) => tailRecM(nextA)(f)
+      case Right(b) => ZIO.succeed(b)
+    }
+}
 
 /**
  * Comprehensive examples showcasing Document Matrix capabilities.
@@ -240,7 +251,7 @@ object DocumentExamples extends ZIOAppDefault {
     _ <- Console.printLine("\n💰 Financial Report:")
     _ <- Console.printLine(DocumentPrinter.printTree(financialReport.map(_.toString)))
     
-    convertedReport <- Document.traverseM[ZIO[Any, Nothing, *], FinancialData, FinancialData](
+    convertedReport <- Document.traverseM[({type L[X] = ZIO[Any, Nothing, X]})#L, FinancialData, FinancialData](
       convertCurrency(BigDecimal("0.85"))
     )(financialReport)
     _ <- Console.printLine("\n💶 Converted to EUR:")

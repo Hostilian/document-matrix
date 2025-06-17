@@ -2,8 +2,7 @@ package com.example
 
 import zio._
 import zio.Console._
-import org.jline.terminal.{Terminal, TerminalBuilder}
-import org.jline.reader.{LineReader, LineReaderBuilder}
+import java.io.IOException
 
 /**
  * Interactive CLI for Document Matrix with advanced features.

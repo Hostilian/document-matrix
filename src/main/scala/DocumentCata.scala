@@ -13,8 +13,8 @@ object DocumentCata {
   def cata[A, B](alg: Document[B] => B)(doc: Document[A])(leaf: A => B): B =
     doc match {
       case Document.Cell(a)    => leaf(a)
-      case Document.Horiz(cs)  => alg(Document.Horiz(cs.map(c => cata(alg)(c)(leaf)).map(Document.Cell(_))))
-      case Document.Vert(cs)   => alg(Document.Vert(cs.map(c => cata(alg)(c)(leaf)).map(Document.Cell(_))))
+      case Document.Horiz(cs)  => alg(Document.Horiz(cs.map(c => cata(alg)(c)(leaf))))
+      case Document.Vert(cs)   => alg(Document.Vert(cs.map(c => cata(alg)(c)(leaf))))
     }
 
   // Common algebras
@@ -24,18 +24,18 @@ object DocumentCata {
      * Count total number of cells in document.
      */
     def countCells: Document[Int] => Int = {
-      case Document.Cell(value)  => value
-      case Document.Horiz(cs)    => cs.foldLeft(0)(_ + _)
-      case Document.Vert(cs)     => cs.foldLeft(0)(_ + _)
+      case Document.Cell(count)  => count
+      case Document.Horiz(cs)    => cs.sum
+      case Document.Vert(cs)     => cs.sum
     }
 
     /**
      * Calculate maximum depth of document tree.
      */
     def maxDepth: Document[Int] => Int = {
-      case Document.Cell(value)  => value
-      case Document.Horiz(cs)    => if (cs.isEmpty) 0 else cs.foldLeft(0)(math.max) + 1
-      case Document.Vert(cs)     => if (cs.isEmpty) 0 else cs.foldLeft(0)(math.max) + 1
+      case Document.Cell(depth)  => depth
+      case Document.Horiz(cs)    => if (cs.isEmpty) 0 else cs.max + 1
+      case Document.Vert(cs)     => if (cs.isEmpty) 0 else cs.max + 1
     }
 
     /**
@@ -43,8 +43,8 @@ object DocumentCata {
      */
     def flatten[A]: Document[List[A]] => List[A] = {
       case Document.Cell(as)     => as
-      case Document.Horiz(cs)    => cs.foldLeft(List.empty[A])(_ ++ _)
-      case Document.Vert(cs)     => cs.foldLeft(List.empty[A])(_ ++ _)
+      case Document.Horiz(cs)    => cs.flatten
+      case Document.Vert(cs)     => cs.flatten
     }
 
     /**

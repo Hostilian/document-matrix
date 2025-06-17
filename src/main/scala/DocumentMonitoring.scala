@@ -59,16 +59,16 @@ object DocumentMonitoring {
   private val startTime = java.time.Instant.now()
 
   // Performance counters
-  private val requestCounter = Ref.unsafe.make(0L)
-  private val totalResponseTime = Ref.unsafe.make(0.0)
-  private val errorCounter = Ref.unsafe.make(0L)
+  private val requestCounter = Ref.unsafe.make(0L)(Unsafe.unsafe)
+  private val totalResponseTime = Ref.unsafe.make(0.0)(Unsafe.unsafe)
+  private val errorCounter = Ref.unsafe.make(0L)(Unsafe.unsafe)
 
   /**
    * Comprehensive health check that validates all system components.
    */
   def performHealthCheck(): ZIO[Any, Nothing, HealthStatus] = {
     for {
-      uptime <- ZIO.succeed(Duration.between(startTime, java.time.Instant.now()))
+      uptime <- ZIO.succeed(java.time.Duration.between(startTime, java.time.Instant.now()))
       
       // Core functionality checks
       documentCheck <- checkDocumentFunctionality()
@@ -140,7 +140,7 @@ object DocumentMonitoring {
       ZIO.succeed(CheckResult(
         status = "unhealthy",
         message = s"Health check failed: ${error.getMessage}",
-        duration = Duration.ZERO
+        duration = java.time.Duration.ZERO
       ))
     }
   }
@@ -164,7 +164,7 @@ object DocumentMonitoring {
       CheckResult(
         status = status,
         message = f"Memory usage: ${usagePercentage}%.1f%%",
-        duration = Duration.ZERO,
+        duration = java.time.Duration.ZERO,
         metadata = Map(
           "used_mb" -> (usedMemory / 1024 / 1024).toString,
           "max_mb" -> (maxMemory / 1024 / 1024).toString,
@@ -175,7 +175,7 @@ object DocumentMonitoring {
       ZIO.succeed(CheckResult(
         status = "unhealthy",
         message = s"Memory check failed: ${error.getMessage}",
-        duration = Duration.ZERO
+        duration = java.time.Duration.ZERO
       ))
     }
   }

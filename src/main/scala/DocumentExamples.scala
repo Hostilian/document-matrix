@@ -1,5 +1,6 @@
 package com.example.examples
 
+import com.example.{Document, DocumentCata, DocumentPrinter}
 import zio._
 import zio.json._
 import cats.Id
@@ -44,7 +45,7 @@ object DocumentExamples extends ZIOAppDefault {
       if (value.trim.nonEmpty) Right(value.toUpperCase)
       else Left(s"Empty cell value: '$value'")
     
-    Document.traverseM[Either[String, *], String, String](validateCell)(doc)
+    Document.traverseM[({type L[X] = Either[String, X]})#L, String, String](validateCell)(doc)
   }
 
   // Example 3: Async Processing with ZIO
@@ -55,7 +56,7 @@ object DocumentExamples extends ZIOAppDefault {
         s"🚀 Processed: $value"
       }
     
-    Document.traverseM[ZIO[Any, Throwable, *], String, String](enrichCell)(doc)
+    Document.traverseM[({type L[X] = ZIO[Any, Throwable, X]})#L, String, String](enrichCell)(doc)
   }
 
   // Example 4: Complex Business Logic - Financial Report
@@ -172,11 +173,11 @@ object DocumentExamples extends ZIOAppDefault {
       enriched <- processDocumentAsync(validated).mapError(_.getMessage)
       
       // Step 3: Additional processing
-      final <- ZIO.succeed(Document.traverseM[Id, String, String](
+      finalDoc = Document.traverseM[Id, String, String](
         value => s"✨ Final: ${value.take(50)}..."
-      )(enriched))
+      )(enriched)
       
-    } yield final
+    } yield finalDoc
   }
 
   // Example 8: JSON Serialization/Deserialization
@@ -189,17 +190,20 @@ object DocumentExamples extends ZIOAppDefault {
   // Example 9: Performance Benchmarking
   def benchmarkOperations(doc: Document[String]): ZIO[Any, Nothing, BenchmarkResults] = {
     for {
-      traversalTime <- ZIO.timed(
-        ZIO.succeed(Document.traverseM[Id, String, String](_.reverse)(doc))
-      ).map(_._1.toMillis)
+      start1 <- Clock.nanoTime
+      _ <- ZIO.succeed(Document.traverseM[Id, String, String](_.reverse)(doc))
+      end1 <- Clock.nanoTime
+      traversalTime = (end1 - start1) / 1000000 // Convert to milliseconds
       
-      cataTime <- ZIO.timed(
-        ZIO.succeed(DocumentCata.countTotalCells(doc))
-      ).map(_._1.toMillis)
+      start2 <- Clock.nanoTime
+      _ <- ZIO.succeed(DocumentCata.countTotalCells(doc))
+      end2 <- Clock.nanoTime
+      cataTime = (end2 - start2) / 1000000
       
-      printTime <- ZIO.timed(
-        ZIO.succeed(DocumentPrinter.printTree(doc))
-      ).map(_._1.toMillis)
+      start3 <- Clock.nanoTime
+      _ <- ZIO.succeed(DocumentPrinter.printTree(doc))
+      end3 <- Clock.nanoTime
+      printTime = (end3 - start3) / 1000000
       
     } yield BenchmarkResults(traversalTime, cataTime, printTime)
   }

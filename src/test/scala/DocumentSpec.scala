@@ -103,7 +103,7 @@ object DocumentSpec extends ZIOSpecDefault {
           ))
         ))
         
-        val count = DocumentCata.cata(DocumentCata.Algebras.countCells)(doc)(_ => 1)
+        val count = DocumentCata.countTotalCells(doc)
         assert(count)(equalTo(3))
       },
 
@@ -116,7 +116,7 @@ object DocumentSpec extends ZIOSpecDefault {
           ))
         ))
         
-        val depth = DocumentCata.cata(DocumentCata.Algebras.maxDepth)(doc)(_ => 1)
+        val depth = DocumentCata.calculateMaxDepth(doc)
         assert(depth)(equalTo(4)) // Root -> Vert -> Horiz -> Vert -> Cell
       },
 
@@ -129,7 +129,7 @@ object DocumentSpec extends ZIOSpecDefault {
           ))
         ))
         
-        val flattened = DocumentCata.cata(DocumentCata.Algebras.flatten)(doc)(List(_))
+        val flattened = DocumentCata.flattenToList(doc)
         assert(flattened.toSet)(equalTo(Set("x", "y", "z")))
       }
     ),

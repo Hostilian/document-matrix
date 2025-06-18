@@ -135,15 +135,16 @@ object DocumentMonitoring {
         duration = duration,
         metadata = Map("test_duration_ms" -> duration.toMillis.toString)
       )
-      case Left(error) => CheckResult(
-        status = "unhealthy",
-        message = s"Document processing failed: $error",
-        duration = duration
-      )
+      case Left(error) =>
+        CheckResult(
+          status = "fail",
+          message = s"Health check failed: $error",
+          duration = java.time.Duration.ZERO
+        )
     }).catchAll { error =>
       ZIO.succeed(CheckResult(
         status = "unhealthy",
-        message = s"Health check failed: ${error.getMessage}",
+        message = s"Health check failed: $error",
         duration = java.time.Duration.ZERO
       ))
     }
@@ -302,16 +303,20 @@ object DocumentMonitoring {
   /**
    * Middleware for automatic request tracking.
    */
-  def trackingMiddleware: HttpApp[Any, Option[Nothing]] => HttpApp[Any, Option[Nothing]] = { app =>
-    Http.collectZIO[Request] { request =>
-      for {
-        start <- Clock.nanoTime
-        response <- app.runZIO(request).some.orElseFail(new RuntimeException("No response"))
-        end <- Clock.nanoTime
-        duration = java.time.Duration.ofNanos(end - start)
-        isError = response.status.code >= 400
-        _ <- recordRequest(duration, isError)
-      } yield response
+  def trackingMiddleware: HttpApp[Any, Nothing] => HttpApp[Any, Nothing] = { app =>
+    new HttpApp[Any, Nothing] {
+      override def routes: Http[Any, Nothing, Request, Response] =
+        Http.collectZIO[Request] { case request =>
+          for {
+            start <- Clock.nanoTime
+            // Capture the response or a default 404 if no route matched
+            responseOpt <- app.routes(request).catchAll(_ => ZIO.succeed(Response.notFound))
+            end <- Clock.nanoTime
+            duration = java.time.Duration.ofNanos(end - start)
+            isError = responseOpt.status.code >= 400
+            _ <- recordRequest(duration, isError)
+          } yield responseOpt
+        }
     }
   }
 

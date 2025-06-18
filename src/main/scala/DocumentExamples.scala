@@ -9,13 +9,24 @@ import cats.instances.list._
 import cats.syntax.all._
 
 // ZIO Monad instance for use in traverseM
-given Monad[({type L[X] = ZIO[Any, Nothing, X]})#L] = new Monad[({type L[X] = ZIO[Any, Nothing, X]})#L] {
+given MonadZioNothing: Monad[({type L[X] = ZIO[Any, Nothing, X]})#L] = new Monad[({type L[X] = ZIO[Any, Nothing, X]})#L] {
   def pure[A](x: A): ZIO[Any, Nothing, A] = ZIO.succeed(x)
   def flatMap[A, B](fa: ZIO[Any, Nothing, A])(f: A => ZIO[Any, Nothing, B]): ZIO[Any, Nothing, B] = fa.flatMap(f)
   def tailRecM[A, B](a: A)(f: A => ZIO[Any, Nothing, Either[A, B]]): ZIO[Any, Nothing, B] =
-    ZIO.succeed(a).flatMap(f).flatMap {
+    f(a).flatMap {
       case Left(nextA) => tailRecM(nextA)(f)
-      case Right(b) => ZIO.succeed(b)
+      case Right(b)    => ZIO.succeed(b)
+    }
+}
+
+// Monad instance for ZIO[Any, Throwable, *]
+given MonadZioThrowable: Monad[({type L[X] = ZIO[Any, Throwable, X]})#L] with {
+  def pure[A](x: A): ZIO[Any, Throwable, A] = ZIO.succeed(x)
+  def flatMap[A, B](fa: ZIO[Any, Throwable, A])(f: A => ZIO[Any, Throwable, B]): ZIO[Any, Throwable, B] = fa.flatMap(f)
+  def tailRecM[A, B](a: A)(f: A => ZIO[Any, Throwable, Either[A, B]]): ZIO[Any, Throwable, B] =
+    f(a).flatMap {
+      case Left(nextA) => tailRecM(nextA)(f)
+      case Right(b)    => ZIO.succeed(b)
     }
 }
 
